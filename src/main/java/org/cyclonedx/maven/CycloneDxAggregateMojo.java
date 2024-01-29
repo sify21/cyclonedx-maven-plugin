@@ -26,11 +26,14 @@ import org.apache.maven.project.MavenProject;
 import org.cyclonedx.maven.ProjectDependenciesConverter.BomDependencies;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.Dependency;
+import org.cyclonedx.model.Evidence;
+import org.cyclonedx.model.component.evidence.Occurrence;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.io.IOException;
 
 /**
  * Creates a CycloneDX aggregate BOM at build root (with dependencies from the whole multi-modules build), and eventually a BOM for each module.
@@ -125,11 +128,25 @@ public class CycloneDxAggregateMojo extends CycloneDxMojo {
             final BomDependencies bomDependencies = extractBOMDependencies(mavenProject);
             final Map<String, Dependency> projectDependencies = bomDependencies.getDependencies();
 
+            Occurrence occurrence = new Occurrence();
+            try {
+                occurrence.setLocation(mavenProject.getFile().getCanonicalPath());
+            } catch (IOException e) {
+                occurrence.setLocation(mavenProject.getFile().getAbsolutePath());
+            }
+            Evidence evidence = new Evidence();
+            evidence.setOccurrences(Arrays.asList(occurrence));
+
             final Component projectBomComponent = convertMavenDependency(mavenProject.getArtifact());
+            projectBomComponent.setEvidence(evidence);
             components.put(projectBomComponent.getPurl(), projectBomComponent);
             topLevelComponents.add(projectBomComponent.getPurl());
 
             populateComponents(topLevelComponents, components, bomDependencies.getArtifacts(), doProjectDependencyAnalysis(mavenProject, bomDependencies));
+
+            for (String purl: bomDependencies.getArtifacts().keySet()) {
+                components.get(purl).setEvidence(evidence);
+            }
 
             projectDependencies.forEach(dependencies::putIfAbsent);
         }

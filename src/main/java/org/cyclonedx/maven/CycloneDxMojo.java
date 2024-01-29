@@ -31,7 +31,11 @@ import org.codehaus.plexus.component.repository.exception.ComponentLookupExcepti
 import org.cyclonedx.maven.ProjectDependenciesConverter.BomDependencies;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.Dependency;
+import org.cyclonedx.model.Evidence;
+import org.cyclonedx.model.component.evidence.Occurrence;
 
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -122,11 +126,25 @@ public class CycloneDxMojo extends BaseCycloneDxMojo {
         final BomDependencies bomDependencies = extractBOMDependencies(getProject());
         final Map<String, Dependency> projectDependencies = bomDependencies.getDependencies();
 
+        Occurrence occurrence = new Occurrence();
+        try {
+            occurrence.setLocation(getProject().getFile().getCanonicalPath());
+        } catch (IOException e) {
+            occurrence.setLocation(getProject().getFile().getAbsolutePath());
+        }
+        Evidence evidence = new Evidence();
+        evidence.setOccurrences(Arrays.asList(occurrence));
+
         final Component projectBomComponent = convertMavenDependency(getProject().getArtifact());
+        projectBomComponent.setEvidence(evidence);
         components.put(projectBomComponent.getPurl(), projectBomComponent);
         topLevelComponents.add(projectBomComponent.getPurl());
 
         populateComponents(topLevelComponents, components, bomDependencies.getArtifacts(), doProjectDependencyAnalysis(getProject(), bomDependencies));
+
+        for (Component com: components.values()) {
+            com.setEvidence(evidence);
+        }
 
         projectDependencies.forEach(dependencies::putIfAbsent);
 

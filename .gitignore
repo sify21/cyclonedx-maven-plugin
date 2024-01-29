@@ -206,3 +206,5 @@ buildNumber.properties
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/maven,intellij,eclipse,visualstudiocode
+
+.vim/
